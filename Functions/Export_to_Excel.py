@@ -34,20 +34,13 @@ def save_and_export(flag,workbook):
     name = ''
     while err == True:
         err = False
-        choice = int(input("\n1: Add New Sheet\n2: Save and Open the file in Excel\n3: Save file\n4: Discard file and Exit\n")) 
+        choice = int(input("\n1: Save and Download the file\n2: Discard file and Exit\n")) 
         try:    
-            if(choice == 2):
-                name = input("Enter the name of the file\n")
-                workbook.save('./'+name+'.xls') 
-                os.system("start EXCEL.EXE {name}.xls".format(name = name))
+            if(choice == 1):
+                name = "webscrap"
+                workbook.save('./'+name+'.csv') 
                 exit()
-            elif(choice == 3):
-                name = input("Enter the name of the file\n")
-                workbook.save('./'+name+'.xls') 
-                exit()
-            elif(choice == 1):
-                pass
-            elif(choice == 4):
+            elif(choice == 2):
                 exit()
             else:
                 raise ValueError

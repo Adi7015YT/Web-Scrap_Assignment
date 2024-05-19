@@ -12,22 +12,13 @@ from datetime import date,datetime
 from collections import defaultdict
 import os
 
-#input Example
-'''
-1,0,0,0
-Web Development
-Mumbai,Delhi
-2020-12-22
-3
-1
-'''
 workbook = xlwt.Workbook()
 count = 0
 
 while True:
     count+=1
     final_params = gup.get_URL_params()
-    URL = 'https://internshala.com'+final_params.lower()
+    URL = 'https://internshala.com/'+final_params.lower()
     page = requests.get(URL)
     soup = BeautifulSoup(page.content, 'html.parser')
     max_pages = int(soup.find(id='total_pages').text.strip())
@@ -60,21 +51,22 @@ while True:
         if flag != '1':
             sheet = workbook.add_sheet("Sheet - {count}|Page - {i}".format(count=count,i = i+1))
             ex.write_header(sheet)
-        intern_titles = soup.find_all(class_ = 'heading_4_5 profile')
+        intern_titles = soup.find_all(class_ = 'cta_container')
         if(len(intern_titles) == 0):
             print('No Results Found....')
             exit()
         print('--------------Scraping Page {i} -----------------'.format(i=i+1))
         for title in intern_titles:
-            elem = title.find('a',href=True)
-            sub_URL = 'https://internshala.com'+str(elem['href'])
+            elem = title.find('a',)
+            elim = elem.get('href')
+            sub_URL = 'https://internshala.com/'+elim
             
             sub_page = requests.get(sub_URL)
             sub_soup = BeautifulSoup(sub_page.content,'html.parser')
 
-            params['internship_title'].append(sub_soup.find(class_ = 'profile_on_detail_page').text.strip())
+            params['internship_title'].append(sub_soup.find(class_ = 'heading_4_5 profile').text.strip())
             params['company'].append(sub_soup.find(class_ = 'heading_6 company_name').find('a').text.strip())
-            params['location'].append(sub_soup.find(class_ = 'location_link').text.strip())
+            params['location'].append(sub_soup.find(id = 'location_names').text.strip())
 
             info = sub_soup.find(class_ = 'internship_other_details_container')
          
@@ -100,7 +92,7 @@ while True:
                 params['perks'].append([])
 
             try :
-                params['openings'].append(int(sub_soup.find_all(class_='text-container')[-1].text.strip()))
+                params['openings'].append(str(sub_soup.find_all(class_='text-container')[-1].text.strip()))
             except IndexError:
                 params['openings'].append([])
             params['link'].append(sub_URL)
