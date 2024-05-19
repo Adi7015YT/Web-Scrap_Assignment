@@ -5,6 +5,7 @@ import Functions.Export_to_Excel as ex
 #Third Party
 import requests
 from bs4 import BeautifulSoup
+import pandas as pd
 import xlwt
 
 #Built-in
@@ -14,6 +15,7 @@ import os
 
 workbook = xlwt.Workbook()
 count = 0
+all_data = []
 
 while True:
     count+=1
@@ -34,79 +36,81 @@ while True:
     flag = 0
     if limit > 1:
         flag = input('Different pages on different sheets?(Default: Yes) | 1: No\n')
-        if flag == '1':
-            sheet = workbook.add_sheet("Sheet - {count}".format(count=count))
-            ex.write_header(sheet)
-    else:
-        flag = '1'
-        sheet = workbook.add_sheet("Sheet - {count}".format(count=count))
-        ex.write_header(sheet)
-
-    params = defaultdict(lambda:[])
 
     for i in range(limit):
-        URL += '/page-{i}'.format(i = i+1)
-        page = requests.get(URL)
-        soup = BeautifulSoup(page.content, 'html.parser')
-        if flag != '1':
-            sheet = workbook.add_sheet("Sheet - {count}|Page - {i}".format(count=count,i = i+1))
-            ex.write_header(sheet)
-        intern_titles = soup.find_all(class_ = 'cta_container')
-        if(len(intern_titles) == 0):
-            print('No Results Found....')
-            exit()
-        print('--------------Scraping Page {i} -----------------'.format(i=i+1))
-        for title in intern_titles:
-            elem = title.find('a',)
-            elim = elem.get('href')
-            sub_URL = 'https://internshala.com/'+elim
-            
-            sub_page = requests.get(sub_URL)
-            sub_soup = BeautifulSoup(sub_page.content,'html.parser')
+            current_url = URL + f'/page-{i + 1}'
+            page = requests.get(current_url)
+            soup = BeautifulSoup(page.content, 'html.parser')
 
-            params['internship_title'].append(sub_soup.find(class_ = 'heading_4_5 profile').text.strip())
-            params['company'].append(sub_soup.find(class_ = 'heading_6 company_name').find('a').text.strip())
-            params['location'].append(sub_soup.find(id = 'location_names').text.strip())
+            intern_titles = soup.find_all(class_='cta_container')
+            if not intern_titles:
+                print('No Results Found....')
+                exit()
 
-            info = sub_soup.find(class_ = 'internship_other_details_container')
-         
-            other_details = info.find_all(class_ = 'item_body')
-          
-            params['duration'].append(other_details[1].text.strip())
-            params['stipend'].append(other_details[2].text.strip())
-            params['apply_by'].append(other_details[3].text.strip())
-            params['applicants'].append(sub_soup.find(class_ = 'applications_message').text.strip())
+            print(f'--------------Scraping Page {i + 1} -----------------')
+            for title in intern_titles:
+                elem = title.find('a')
+                elim = elem.get('href')
+                sub_URL = 'https://internshala.com/' + elim
 
-            try :
-                skills_raw = sub_soup.find(class_ = 'heading_5_5',string = 'Skill(s) required')
-                skills_raw = skills_raw.findNext(class_ = 'round_tabs_container')
-                params['skills'].append([str(i.text.strip()+' , ') for i in skills_raw.find_all(class_ = 'round_tabs')])
-            except (IndexError,AttributeError):
-                params['skills'].append([])
+                sub_page = requests.get(sub_URL)
+                sub_soup = BeautifulSoup(sub_page.content, 'html.parser')
+
+                data = {
+                    'internship_title': sub_soup.find(class_='heading_4_5 profile').text.strip(),
+                    'company': sub_soup.find(class_='heading_6 company_name').find('a').text.strip(),
+                    'location': sub_soup.find(id='location_names').text.strip(),
+                }
+
+                info = sub_soup.find(class_='internship_other_details_container')
+                other_details = info.find_all(class_='item_body')
+
+                data.update({
+                    'duration': other_details[1].text.strip(),
+                    'stipend': other_details[2].text.strip(),
+                    'apply_by': other_details[3].text.strip(),
+                    'applicants': sub_soup.find(class_='applications_message').text.strip(),
+                })
+
+                try:
+                    skills_raw = sub_soup.find(class_='heading_5_5', string='Skill(s) required')
+                    skills_raw = skills_raw.findNext(class_='round_tabs_container')
+                    data['skills'] = ', '.join([i.text.strip() for i in skills_raw.find_all(class_='round_tabs')])
+                except (IndexError, AttributeError):
+                    data['skills'] = ''
+
+                try:
+                    perks_raw = sub_soup.find(class_='heading_5_5', string='Perks')
+                    perks_raw = perks_raw.findNext(class_='round_tabs_container')
+                    data['perks'] = ', '.join([i.text.strip() for i in perks_raw.find_all(class_='round_tabs')])
+                except (IndexError, AttributeError):
+                    data['perks'] = ''
+
+                try:
+                    data['openings'] = sub_soup.find_all(class_='text-container')[-1].text.strip()
+                except IndexError:
+                    data['openings'] = ''
                 
-            try :
-                perks_raw = sub_soup.find(class_ = 'heading_5_5',string = 'Perks')
-                perks_raw = perks_raw.findNext(class_ = 'round_tabs_container')
-                params['perks'].append([str(i.text.strip()+' , ') for i in perks_raw.find_all(class_ = 'round_tabs')])
-            except (IndexError,AttributeError):
-                params['perks'].append([])
+                data.update({
+                    'link': sub_URL
+                })
 
-            try :
-                params['openings'].append(str(sub_soup.find_all(class_='text-container')[-1].text.strip()))
-            except IndexError:
-                params['openings'].append([])
-            params['link'].append(sub_URL)
+                all_data.append(data)
 
-        if flag != '1':
-            ex.write_body(params,sheet)
-            params = defaultdict(lambda:[])
+    df = pd.DataFrame(all_data)
 
     if flag == '1':
-        ex.write_body(params,sheet)
+            sheet_name = f"Sheet - {count}"
+            sheet = workbook.add_sheet(sheet_name)
+            ex.write_header(sheet)
+            params = df.to_dict(orient='list')
+            ex.write_body(params, sheet)
+    else:
+            for i in range(limit):
+                sheet_name = f"Sheet - {count}|Page - {i + 1}"
+                sheet = workbook.add_sheet(sheet_name)
+                ex.write_header(sheet)
+                params = df.iloc[i * len(intern_titles):(i + 1) * len(intern_titles)].to_dict(orient='list')
+                ex.write_body(params, sheet)
 
-    ex.save_and_export(flag,workbook)
-    
-    
-
-
-
+    ex.save_and_export(workbook)

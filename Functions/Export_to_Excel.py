@@ -15,7 +15,7 @@ def write_header(sheet):
     sheet.write(0, 6, 'Applicants', style_head) 
     sheet.write(0, 7, 'Skills Required', style_head) 
     sheet.write(0, 8, 'Perks', style_head) 
-    sheet.write(0, 9, 'Number of Openings', style_head) 
+    sheet.write(0, 9, 'Details', style_head) 
     sheet.write(0, 10, 'Link', style_head) 
 
 def write_body(params,sheet):
@@ -28,25 +28,23 @@ def write_body(params,sheet):
             max_val[excel_col] = col_width if 160 > col_width > max_val[excel_col] else max_val[excel_col]
             sheet.col(excel_col).width = 256 * max_val[excel_col]
 
-def save_and_export(flag,workbook):
-     
+def save_and_export(workbook):
     err = True
-    name = ''
-    while err == True:
+    while err:
         err = False
-        choice = int(input("\n1: Save and Download the file\n2: Discard file and Exit\n")) 
-        try:    
-            if(choice == 1):
+        choice = int(input("\n1: Save and Download the file\n2: Discard file and Exit\n"))
+        try:
+            if choice == 1:
                 name = "webscrap"
-                workbook.save('./'+name+'.csv') 
+                workbook.save('./' + name + '.csv')
+                print(f"Data saved to '{name}.csv'")
                 exit()
-            elif(choice == 2):
+            elif choice == 2:
                 exit()
             else:
                 raise ValueError
         except PermissionError:
-            print("Don't have appropriate permissions to perform the operation. "+
-                "Try changing the name of the file to something unique or run terminal as admin...Choose again")
+            print("Don't have appropriate permissions to perform the operation. Try changing the name of the file to something unique or run terminal as admin...Choose again")
             err = True
         except ValueError:
             print("Invalid Input, Loading choices again.............")
